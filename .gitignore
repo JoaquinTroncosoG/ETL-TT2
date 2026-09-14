@@ -9,8 +9,10 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Variables de entorno
+# Variables de entorno y credenciales
 .env
+client_secret.json
+youtube_token.pickle
 
 # Jupyter Notebooks
 .ipynb_checkpoints/
