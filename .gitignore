@@ -22,3 +22,6 @@ __pycache__/
 # Credenciales OAuth
 client_secret.json
 token.json
+
+# Datos crudos extraidos de las APIs
+data/raw/
