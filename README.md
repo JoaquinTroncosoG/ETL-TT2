@@ -1,5 +1,4 @@
-# ETL Observatorio UX
-
+# ETL
 Pipeline centralizado de extracción y limpieza de datos multiplataforma (ETL) desarrollado en Python.
 
 ## Estructura
