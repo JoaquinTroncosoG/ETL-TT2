@@ -3,3 +3,5 @@ requests
 python-dotenv
 pyodbc
 SQLAlchemy
+google-auth-oauthlib 
+ 

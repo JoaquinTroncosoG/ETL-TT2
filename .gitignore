@@ -22,6 +22,8 @@ __pycache__/
 # Credenciales OAuth
 client_secret.json
 token.json
+youtube_token.pickle
+*.pickle
 
 # Datos crudos extraidos de las APIs
 data/raw/
