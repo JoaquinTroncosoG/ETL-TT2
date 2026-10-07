@@ -5,8 +5,9 @@ Pruebas de src/transform/cargar_json.py
 
 No dependen de data/raw (esta en el .gitignore): cada prueba arma sus propios
 JSON en una carpeta temporal, con la misma estructura que escribe
-extract_instagram.py. El JSON "con publicaciones" es SINTETICO: la cuenta real
-aun no tiene contenido.
+extract_instagram.py y extract_youtube.py. Los JSON con contenido son
+SINTETICOS: la cuenta de Instagram aun no tiene publicaciones y todavia no hay
+extracciones reales de YouTube.
 
 USO
     python -m unittest tests.prueba_cargar_json -v
@@ -91,6 +92,74 @@ JSON_CON_PUBLICACIONES = {
 }
 
 
+def _meta_yt(id_ejecucion, estado="EXITO", error=None):
+    return {
+        "id_ejecucion": id_ejecucion, "plataforma": "youtube", "version_api": "v3",
+        "fecha_hora_inicio_utc": "2026-10-06T00:00:00+00:00",
+        "fecha_hora_fin_utc": "2026-10-06T00:00:03+00:00",
+        "duracion_segundos": 2.1, "estado": estado, "videos_extraidos": 3,
+        "llamadas_api": 4, "paginas_recorridas": 2, "cuota_estimada": 4,
+        "error": error, "youtube_channel_id": "UC123",
+        "parametros": {"limite": None, "sin_estadisticas": False},
+    }
+
+
+def _item_playlist(video_id, titulo):
+    return {"kind": "youtube#playlistItem", "etag": "ruido",
+            "snippet": {"title": titulo, "description": "desc", "thumbnails": {"default": {}}},
+            "contentDetails": {"videoId": video_id,
+                               "videoPublishedAt": "2026-09-30T12:00:00Z"},
+            "status": {"privacyStatus": "public"}}
+
+
+def _item_video(video_id, vistas):
+    return {"kind": "youtube#video", "etag": "ruido", "id": video_id,
+            "contentDetails": {"duration": "PT4M13S", "definition": "hd"},
+            "statistics": {"viewCount": vistas, "likeCount": "0", "commentCount": "2",
+                           "favoriteCount": "0"},
+            "topicDetails": {"topicCategories": ["https://es.wikipedia.org/wiki/Music"]}}
+
+
+JSON_YT_CON_VIDEOS = {
+    "metadatos_ejecucion": _meta_yt("dddd-4444"),
+    "respuestas": {
+        "canal": {"items": [{
+            "id": "UC123",
+            "snippet": {"title": "Canal", "customUrl": "@canal",
+                        "publishedAt": "2020-01-01T00:00:00Z"},
+            "statistics": {"subscriberCount": "0", "videoCount": "3", "viewCount": "150",
+                           "hiddenSubscriberCount": False},
+            "contentDetails": {"relatedPlaylists": {"uploads": "UU123"}},
+        }]},
+        "paginas_playlist": [
+            {"items": [_item_playlist("v1", "uno"), _item_playlist("v2", "dos")],
+             "nextPageToken": "abc"},
+            {"items": [_item_playlist("v3", "tres")]},
+        ],
+        "estadisticas_videos": [
+            {"items": [_item_video("v1", "100"), _item_video("v2", "50"),
+                       _item_video("v3", "0")]},
+        ],
+    },
+}
+
+JSON_YT_SIN_ESTADISTICAS = {
+    "metadatos_ejecucion": _meta_yt("eeee-5555"),
+    "respuestas": {
+        "canal": JSON_YT_CON_VIDEOS["respuestas"]["canal"],
+        "paginas_playlist": [{"items": [_item_playlist("v1", "uno")]}],
+        "estadisticas_videos": None,
+    },
+}
+
+JSON_YT_FALLIDA = {
+    "metadatos_ejecucion": _meta_yt("ffff-6666", "FALLIDA", {
+        "tipo": "ErrorApi", "mensaje": "The request cannot be completed",
+        "estado_http": 403, "codigo": None, "razon": "forbidden"}),
+    "respuestas": {"canal": None, "paginas_playlist": [], "estadisticas_videos": []},
+}
+
+
 class PruebaCargarJson(unittest.TestCase):
 
     def setUp(self):
@@ -163,6 +232,45 @@ class PruebaCargarJson(unittest.TestCase):
         self.assertEqual(set(t), {"ejecucion", "perfil", "publicaciones", "metricas"})
         self.assertTrue(all(df.empty for df in t.values()))
         self.assertEqual(list(t["perfil"].columns), cj.COLUMNAS_PERFIL)
+
+    # ---------------------------------------------------------------- YouTube
+
+    def test_youtube_canal_y_videos_de_varias_paginas(self):
+        t = cj.cargar_youtube(self._escribir("youtube_d.json", JSON_YT_CON_VIDEOS))
+        self.assertEqual(len(t["canal"]), 1)
+        self.assertEqual(t["canal"].iloc[0]["statistics.subscriberCount"], "0")
+        self.assertEqual(list(t["videos"]["contentDetails.videoId"]), ["v1", "v2", "v3"])
+        self.assertEqual(list(t["estadisticas"]["id"]), ["v1", "v2", "v3"])
+        self.assertEqual(set(t["estadisticas"]["id_ejecucion"]), {"dddd-4444"})
+
+    def test_youtube_solo_quedan_las_columnas_de_la_lista_blanca(self):
+        t = cj.cargar_youtube(self._escribir("youtube_d.json", JSON_YT_CON_VIDEOS))
+        self.assertEqual(list(t["ejecucion"].columns), cj.COLUMNAS_EJECUCION_YT)
+        self.assertEqual(list(t["canal"].columns), cj.COLUMNAS_CANAL)
+        self.assertEqual(list(t["videos"].columns), cj.COLUMNAS_VIDEO)
+        self.assertEqual(list(t["estadisticas"].columns), cj.COLUMNAS_ESTADISTICA)
+
+    def test_youtube_sin_estadisticas_conserva_el_listado(self):
+        t = cj.cargar_youtube(self._escribir("youtube_e.json", JSON_YT_SIN_ESTADISTICAS))
+        self.assertEqual(len(t["videos"]), 1)
+        self.assertTrue(t["estadisticas"].empty)
+
+    def test_youtube_fallida_usa_el_estado_http_como_codigo(self):
+        t = cj.cargar_youtube(self._escribir("youtube_f.json", JSON_YT_FALLIDA))
+        ej = t["ejecucion"].iloc[0]
+        self.assertEqual(ej["estado"], "FALLIDA")
+        self.assertEqual(ej["error_codigo"], 403)
+        self.assertTrue(t["canal"].empty)
+        self.assertTrue(t["videos"].empty)
+
+    def test_youtube_cargar_todo_ignora_los_json_de_instagram(self):
+        self._escribir("youtube_d.json", JSON_YT_CON_VIDEOS)
+        self._escribir("youtube_f.json", JSON_YT_FALLIDA)
+        self._escribir("instagram_a.json", JSON_CUENTA_VACIA)
+        t = cj.cargar_todo_youtube(self.dir)
+        self.assertEqual(len(t["ejecucion"]), 2)
+        self.assertEqual(len(t["canal"]), 1)
+        self.assertEqual(len(t["videos"]), 3)
 
 
 if __name__ == "__main__":
