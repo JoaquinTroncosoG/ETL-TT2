@@ -33,7 +33,7 @@ cargar_json.py y les aplica tres operaciones fundamentales de calidad de datos:
 
 Cada transformacion genera un log detallado por consola para trazabilidad
 academica. Al final, guarda los DataFrames limpios en data/processed/ como
-archivos CSV, listos para la fase de carga (Load).
+CSV (y opcionalmente CSV para Excel y .xlsx), listos para la fase de carga (Load).
 
 USO
 ---
@@ -41,6 +41,7 @@ USO
     python src/transform/transform_data.py --solo youtube
     python src/transform/transform_data.py --solo instagram
     python src/transform/transform_data.py --salida data/processed/prueba
+    python src/transform/transform_data.py --formatos csv xlsx
 
 Requiere haber ejecutado previamente los extractores para que existan
 archivos JSON en data/raw/.
@@ -421,20 +422,55 @@ def transformar_tablas(tablas, reglas, plataforma):
 
 
 # =========================================================================
-# Guardado de resultados (CSV)
+# Exportacion de resultados (CSV y Excel)
 # =========================================================================
 
-def guardar_csv(tablas, carpeta, plataforma):
-    """Guarda cada DataFrame como CSV en la carpeta de destino."""
+FORMATOS_EXPORTACION = ("csv", "csv_excel", "xlsx")
+
+
+def exportar_resultados(tablas, carpeta, plataforma, formatos=FORMATOS_EXPORTACION):
+    """
+    Exporta cada DataFrame en la carpeta de destino segun los formatos pedidos.
+
+    - "csv": {tabla}.csv separado por comas, utf-8-sig. Es el archivo que
+      consume el pipeline (pandas y la carga a Azure).
+    - "csv_excel": {tabla}_excel.csv, igual al anterior pero con la linea
+      "sep=," al inicio para que Excel separe cada valor en su casilla aunque
+      la configuracion regional use ";". Solo para abrir en Excel.
+    - "xlsx": {tabla}.xlsx. Las fechas van en UTC sin zona horaria porque
+      Excel no las acepta con tz.
+    """
+    invalidos = set(formatos) - set(FORMATOS_EXPORTACION)
+    if invalidos:
+        raise ValueError(f"Formato(s) no soportado(s): {sorted(invalidos)}")
+
     destino = Path(carpeta) / plataforma
     destino.mkdir(parents=True, exist_ok=True)
 
     archivos = []
     for nombre, df in tablas.items():
-        ruta = destino / f"{nombre}.csv"
-        df.to_csv(ruta, index=False, encoding="utf-8")
-        archivos.append(ruta)
-        log.info("  [GUARDADO] %s -> %s (%d filas)", nombre, ruta, len(df))
+        if "csv" in formatos:
+            ruta = destino / f"{nombre}.csv"
+            df.to_csv(ruta, index=False, encoding="utf-8-sig")
+            archivos.append(ruta)
+
+        if "csv_excel" in formatos:
+            ruta = destino / f"{nombre}_excel.csv"
+            with open(ruta, "w", encoding="utf-8-sig", newline="") as f:
+                f.write("sep=,\n")
+                df.to_csv(f, index=False)
+            archivos.append(ruta)
+
+        if "xlsx" in formatos:
+            ruta = destino / f"{nombre}.xlsx"
+            df_excel = df.copy()
+            for col in df_excel.select_dtypes(include=["datetimetz"]).columns:
+                df_excel[col] = df_excel[col].dt.tz_convert(None)
+            df_excel.to_excel(ruta, index=False)
+            archivos.append(ruta)
+
+        log.info("  [GUARDADO] %s -> %s (%d filas, %s)",
+                 nombre, destino, len(df), ", ".join(formatos))
 
     return archivos
 
@@ -484,6 +520,9 @@ def parsear_argumentos():
                         help="Procesar unicamente una plataforma")
     parser.add_argument("--salida", default=str(SALIDA_POR_DEFECTO),
                         help=f"Carpeta de salida (por defecto: {SALIDA_POR_DEFECTO})")
+    parser.add_argument("--formatos", nargs="+", choices=FORMATOS_EXPORTACION,
+                        default=list(FORMATOS_EXPORTACION),
+                        help="Formatos a exportar (por defecto: todos)")
     return parser.parse_args()
 
 
@@ -504,14 +543,14 @@ def main():
         log.info("\nCargando datos crudos de Instagram...")
         tablas_ig = cargar_todo_instagram()
         limpias_ig, resumen_ig = transformar_tablas(tablas_ig, REGLAS_INSTAGRAM, "instagram")
-        guardar_csv(limpias_ig, args.salida, "instagram")
+        exportar_resultados(limpias_ig, args.salida, "instagram", args.formatos)
 
     # -- YouTube --
     if args.solo is None or args.solo == "youtube":
         log.info("\nCargando datos crudos de YouTube...")
         tablas_yt = cargar_todo_youtube()
         limpias_yt, resumen_yt = transformar_tablas(tablas_yt, REGLAS_YOUTUBE, "youtube")
-        guardar_csv(limpias_yt, args.salida, "youtube")
+        exportar_resultados(limpias_yt, args.salida, "youtube", args.formatos)
 
     # -- Resumen --
     imprimir_resumen(resumen_ig, resumen_yt)
