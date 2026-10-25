@@ -29,3 +29,5 @@ youtube_token.pickle
 
 # Datos crudos extraidos de las APIs
 data/raw/
+
+data/processed/
