@@ -512,7 +512,7 @@ def configurar_logging():
     logging.basicConfig(level=logging.INFO, handlers=[manejador])
 
 
-def parsear_argumentos():
+def parsear_argumentos(argumentos=None):
     parser = argparse.ArgumentParser(
         description="Transforma y limpia los datos crudos extraidos de las APIs. "
                     "Trata nulos, elimina duplicados y castea tipos de datos.")
@@ -523,11 +523,11 @@ def parsear_argumentos():
     parser.add_argument("--formatos", nargs="+", choices=FORMATOS_EXPORTACION,
                         default=list(FORMATOS_EXPORTACION),
                         help="Formatos a exportar (por defecto: todos)")
-    return parser.parse_args()
+    return parser.parse_args(argumentos)
 
 
-def main():
-    args = parsear_argumentos()
+def main(argumentos=None):
+    args = parsear_argumentos(argumentos)
     configurar_logging()
 
     print("\n" + "=" * 55)
