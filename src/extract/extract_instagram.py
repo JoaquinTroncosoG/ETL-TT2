@@ -19,6 +19,7 @@ USO
     python src/extract/extract_instagram.py
     python src/extract/extract_instagram.py --limite 5            # prueba corta
     python src/extract/extract_instagram.py --sin-insights        # solo perfil y publicaciones
+    python src/extract/extract_instagram.py --tamano-pagina 2      # forzar varias paginas
     python src/extract/extract_instagram.py --salida data/raw/pruebas
 
 Variables requeridas en el .env: INSTAGRAM_ACCESS_TOKEN, IG_BUSINESS_ACCOUNT_ID
@@ -332,18 +333,22 @@ def redactar_paginacion(pagina):
     return pagina
 
 
-def extraer_publicaciones(cliente, ig_id, limite, paginas):
+def extraer_publicaciones(cliente, ig_id, limite, paginas, tamano_pagina=TAMANO_PAGINA):
     """
     Recorre todas las paginas siguiendo paging.next. Cada pagina cruda se
     agrega a `paginas` apenas llega, para no perderla si la ejecucion falla.
     Devuelve la lista de publicaciones (para pedir sus insights).
+
+    `tamano_pagina` es cuantas publicaciones se piden por peticion. Bajarlo
+    obliga a la API a devolver varias paginas aunque la cuenta tenga pocas
+    publicaciones, lo que permite verificar la paginacion contra la API real.
     """
     publicaciones = []
     destino = f"{ig_id}/media"
     while destino:
-        tamano = TAMANO_PAGINA
+        tamano = tamano_pagina
         if limite is not None:
-            tamano = min(TAMANO_PAGINA, limite - len(publicaciones))
+            tamano = min(tamano_pagina, limite - len(publicaciones))
             if tamano <= 0:
                 break
 
@@ -513,11 +518,16 @@ def parsear_argumentos(argv=None):
                         help="maximo de publicaciones a extraer (para pruebas)")
     parser.add_argument("--sin-insights", action="store_true",
                         help="omitir las metricas; solo perfil y publicaciones")
+    parser.add_argument("--tamano-pagina", type=int, default=TAMANO_PAGINA, metavar="N",
+                        help=f"publicaciones por peticion, entre 1 y {TAMANO_PAGINA} "
+                             f"(por defecto {TAMANO_PAGINA}); bajarlo fuerza varias paginas")
     parser.add_argument("--salida", default=str(SALIDA_POR_DEFECTO), metavar="RUTA",
                         help=f"carpeta de destino (por defecto {SALIDA_POR_DEFECTO})")
     args = parser.parse_args(argv)
     if args.limite is not None and args.limite <= 0:
         parser.error("--limite debe ser un entero mayor que 0")
+    if not 1 <= args.tamano_pagina <= TAMANO_PAGINA:
+        parser.error(f"--tamano-pagina debe estar entre 1 y {TAMANO_PAGINA}")
     return args
 
 
@@ -546,7 +556,8 @@ def main(argv=None):
         "paginas_recorridas": 0,
         "error": None,
         "ig_business_account_id": ig_id,
-        "parametros": {"limite": args.limite, "sin_insights": args.sin_insights},
+        "parametros": {"limite": args.limite, "sin_insights": args.sin_insights,
+                       "tamano_pagina": args.tamano_pagina},
         "metricas_descartadas": [],
         "x_business_use_case_usage": [],
     }
@@ -568,7 +579,8 @@ def main(argv=None):
 
         log.info("[2/3] Publicaciones")
         publicaciones = extraer_publicaciones(cliente, ig_id, args.limite,
-                                              respuestas["paginas_media"])
+                                              respuestas["paginas_media"],
+                                              args.tamano_pagina)
 
         if args.sin_insights:
             log.info("[3/3] Insights omitidos (--sin-insights)")
