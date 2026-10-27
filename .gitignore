@@ -31,3 +31,7 @@ youtube_token.pickle
 data/raw/
 
 data/processed/
+
+# Logs de ejecucion batch
+logs/
+*.log

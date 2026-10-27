@@ -7,9 +7,13 @@ Pipeline centralizado de extracción, limpieza y carga de datos multiplataforma 
 ## 📁 Estructura del Proyecto
 
 ```text
+├── .github/
+│   └── workflows/
+│       └── etl_batch.yml      # CI/CD: Automatización diaria con GitHub Actions (CRON)
 ├── data/                      # Almacenamiento local (ignorado en git)
 │   ├── raw/                   # Respuestas JSON crudas de las APIs (auditoría)
 │   └── processed/             # Tablas limpias exportadas en CSV / Excel
+├── logs/                      # Bitácoras de ejecución batch desatendida (ignorado en git)
 ├── sql/
 │   └── crear_tablas.sql       # Script DDL del Modelo Dimensional (T-SQL)
 ├── src/
@@ -32,7 +36,10 @@ Pipeline centralizado de extracción, limpieza y carga de datos multiplataforma 
 │   ├── test_normalizar.py
 │   ├── test_exportar.py
 │   └── prueba_cargar_json.py
-├── tools/                     # Scripts de diagnóstico y utilidades de consola
+├── tools/                     # Scripts de diagnóstico, automatización y consola
+│   ├── ejecutar_batch.py      # Wrapper de ejecución batch con logging
+│   ├── ejecutar_batch.cmd     # Lanzador Windows sin conflicto de espacios
+│   ├── programar_tarea_windows.ps1 # Automatizador del Programador de Tareas (Windows)
 │   ├── probar_conexion_db.py  # Diagnóstico de conexión a Azure y firewall
 │   ├── estado_credenciales.py # Chequeo rápido de vigencia de tokens
 │   ├── renovar_youtube.py     # Flujo OAuth de YouTube
@@ -191,6 +198,70 @@ python src/transform/transform_data.py --solo instagram
    ```
    - El proceso es **100% idempotente**: no duplica observaciones si se ejecuta múltiples veces.
    - Puebla automáticamente la dimensión de calendario `DIM_TIEMPO` según las fechas detectadas.
+
+---
+
+## ⏰ Automatización y Ejecución Desatendida (Proceso Batch)
+
+Para garantizar la recolección periódica e incremental sin requerir intervención manual, el proyecto implementa una **estrategia dual de automatización**: en la nube mediante **GitHub Actions (CRON)** y en entornos locales o servidores mediante **Programador de Tareas (Windows Task Scheduler / Linux Cron)**.
+
+### Opción 1: GitHub Actions en la Nube (CRON Serverless)
+
+Diseñado para ejecución continua en la nube sin mantener una computadora encendida y sin consumir los créditos limitados de suscripción de Azure:
+
+* **Archivo de Workflow:** `.github/workflows/etl_batch.yml`.
+* **Programación:** Todos los días a las `03:00 UTC` (`0 3 * * *`), que corresponde a las `00:00` (medianoche) hora continental de Chile.
+* **Ambiente de Ejecución:** `windows-latest` con Python 3.11 y `ODBC Driver 18 for SQL Server` preinstalado de forma nativa.
+* **Disparo manual (Workflow Dispatch):** Se puede ejecutar bajo demanda desde GitHub en la pestaña **Actions** > **ETL Batch Pipeline** > **Run workflow**, permitiendo fijar parámetros como `limite` de registros o filtrar por `plataforma` (`todas`, `youtube`, `instagram`).
+* **Respaldo de Artefactos:** Los archivos exportados (`data/processed/`) se respaldan automáticamente como artefactos descargables al finalizar cada ejecución.
+
+#### Configuración de Secretos en GitHub:
+En el repositorio de GitHub, dirígete a **Settings** > **Secrets and variables** > **Actions** y registra los siguientes secretos bajo **Repository secrets**:
+* **Azure SQL:** `AZURE_SERVER`, `AZURE_DATABASE`, `AZURE_USER`, `AZURE_PASSWORD`
+* **YouTube API:** `YOUTUBE_API_KEY`, `YOUTUBE_CHANNEL_ID`
+* **Instagram API:** `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, `INSTAGRAM_ACCESS_TOKEN`, `IG_BUSINESS_ACCOUNT_ID`, `FB_PAGE_ID`
+
+---
+
+### Opción 2: Programador de Tareas de Windows (Local / Servidor On-Premise)
+
+Para automatizar la ejecución dentro de Windows de manera desatendida y tolerante a fallos, se diseñó una capa de ejecución y registro:
+* `tools/ejecutar_batch.py`: Wrapper en Python que ejecuta `main.py`, captura errores no controlados, genera logs con marca de tiempo y retorna códigos de salida del sistema operativo (0 para éxito, 1 para error).
+* `tools/ejecutar_batch.cmd`: Lanzador Batch que activa el entorno virtual `venv` y ejecuta el script en la ruta del proyecto, evitando conflictos de comillas o espacios en el Programador de Tareas.
+* `logs/`: Directorio donde se archivan las bitácoras históricas (`batch_YYYYMMDD_HHMMSS.log`) y el registro de la última ejecución (`ultimo_batch.log`).
+
+#### Gestión con PowerShell (`tools/programar_tarea_windows.ps1`):
+El script auxiliar permite gestionar la tarea `ETL_Multiplataforma_Batch` en Windows con un solo comando:
+
+```powershell
+# 1. Crear y registrar la tarea diaria desatendida (por defecto a las 00:00 hrs)
+.\tools\programar_tarea_windows.ps1 -Accion crear
+
+# Crear la tarea indicando una hora personalizada (ej. 02:30 hrs)
+.\tools\programar_tarea_windows.ps1 -Accion crear -Hora "02:30"
+
+# 2. Consultar el estado y próximo horario de ejecución
+.\tools\programar_tarea_windows.ps1 -Accion ver
+
+# 3. Disparar una ejecución de prueba inmediata
+.\tools\programar_tarea_windows.ps1 -Accion ejecutar
+
+# 4. Eliminar la tarea programada
+.\tools\programar_tarea_windows.ps1 -Accion eliminar
+```
+
+---
+
+### Opción 3: Cron en Linux / Servidores Cloud
+
+Si se traslada el proyecto a un servidor Linux o máquina virtual en la nube, se puede programar en el crontab del sistema:
+```bash
+# Abrir editor de tareas programadas
+crontab -e
+
+# Ejecutar el pipeline todos los días a medianoche (00:00) registrando salida
+0 0 * * * cd /ruta/al/proyecto && ./venv/bin/python tools/ejecutar_batch.py >> logs/cron_output.log 2>&1
+```
 
 ---
 

@@ -1,0 +1,82 @@
+name: ETL Batch Pipeline (Ejecución Programada)
+
+on:
+  # Ejecucion automatica diaria desatendida (CRON)
+  # 03:00 UTC equivale a las 00:00 (medianoche) hora continental de Chile
+  schedule:
+    - cron: '0 3 * * *'
+
+  # Permite ejecucion manual bajo demanda desde la pestana 'Actions' en GitHub
+  workflow_dispatch:
+    inputs:
+      limite:
+        description: 'Limite de registros a extraer (dejar vacio para extraccion completa)'
+        required: false
+        default: ''
+      plataforma:
+        description: 'Plataforma a procesar'
+        required: true
+        type: choice
+        options:
+          - todas
+          - youtube
+          - instagram
+        default: todas
+
+jobs:
+  ejecutar-etl:
+    name: Pipeline ETL Multi-Plataforma
+    runs-on: windows-latest
+
+    steps:
+      - name: Descargar codigo fuente del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar entorno Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar dependencias del proyecto
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ejecutar Pipeline ETL (Extraccion -> Transformacion -> Carga Azure SQL)
+        env:
+          # Credenciales inyectadas de forma segura desde GitHub Secrets
+          AZURE_SERVER: ${{ secrets.AZURE_SERVER }}
+          AZURE_DATABASE: ${{ secrets.AZURE_DATABASE }}
+          AZURE_USER: ${{ secrets.AZURE_USER }}
+          AZURE_PASSWORD: ${{ secrets.AZURE_PASSWORD }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+          INSTAGRAM_APP_ID: ${{ secrets.INSTAGRAM_APP_ID }}
+          INSTAGRAM_APP_SECRET: ${{ secrets.INSTAGRAM_APP_SECRET }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          IG_BUSINESS_ACCOUNT_ID: ${{ secrets.IG_BUSINESS_ACCOUNT_ID }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+        run: |
+          $params = @()
+          
+          if ("${{ github.event.inputs.limite }}" -ne "") {
+            $params += "--limite", "${{ github.event.inputs.limite }}"
+          }
+          
+          if ("${{ github.event.inputs.plataforma }}" -eq "youtube") {
+            $params += "--plataforma", "youtube"
+          } elseif ("${{ github.event.inputs.plataforma }}" -eq "instagram") {
+            $params += "--plataforma", "instagram"
+          }
+          
+          Write-Host "Iniciando orquestador main.py con parametros: $params"
+          python main.py $params
+
+      - name: Respaldar archivos procesados (CSV / Excel) como artefactos
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: datos-procesados-etl
+          path: data/processed/
+          retention-days: 7
