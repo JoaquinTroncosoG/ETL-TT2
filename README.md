@@ -32,11 +32,13 @@ Pipeline centralizado de extracción, limpieza y carga de datos multiplataforma 
 │       ├── auth_youtube.py    # Renovación de tokens de Google
 │       └── auth_instagram.py  # Canje y validación de tokens de Meta
 ├── tests/                     # Pruebas automatizadas (pytest y unittest)
+│   ├── test_integridad_azure.py # Pruebas de integridad Data Cruda (RAW) vs Azure SQL
 │   ├── test_cargar_datos.py
 │   ├── test_normalizar.py
 │   ├── test_exportar.py
 │   └── prueba_cargar_json.py
 ├── tools/                     # Scripts de diagnóstico, automatización y consola
+│   ├── verificar_integridad.py # Auditoría de integridad completa (Raw vs Azure SQL)
 │   ├── ejecutar_batch.py      # Wrapper de ejecución batch con logging
 │   ├── ejecutar_batch.cmd     # Lanzador Windows sin conflicto de espacios
 │   ├── programar_tarea_windows.ps1 # Automatizador del Programador de Tareas (Windows)
@@ -103,6 +105,10 @@ Pipeline centralizado de extracción, limpieza y carga de datos multiplataforma 
 
 Antes de correr el pipeline, puedes verificar el estado de tus conexiones con los scripts de acceso rápido:
 
+* **Auditar Integridad de Datos (Data Cruda JSON vs Azure SQL Database):**
+  ```bash
+  python tools/verificar_integridad.py
+  ```
 * **Probar conexión con Azure SQL y validar Firewall / Drivers:**
   ```bash
   python tools/probar_conexion_db.py
@@ -275,4 +281,8 @@ Para ver el detalle de cada prueba individual:
 ```bash
 pytest -v
 ```
-Las pruebas cubren validaciones de zonas horarias, cambio de hora oficial en Chile, tratamiento de nulos, exportaciones de archivos Excel y persistencia de claves foráneas dimensionales.
+Las pruebas cubren:
+- **Integridad y Conciliación Data Cruda vs Azure SQL** (`tests/test_integridad_azure.py`): Conciliación de volumen de entidades, fidelidad campo a campo de publicaciones, exactitud de métricas cuantitativas (likes, comentarios, vistas, alcance), integridad referencial (0 huérfanos), deduplicación/idempotencia (0 duplicados) y consistencia temporal UTC.
+- **Normalización y Fechas**: Conversión precisa a UTC, soporte para husos de Chile continental (`America/Santiago`), manejo de horas ambiguas e inexistentes por cambio de horario oficial.
+- **Transformación y Calidad**: Limpieza de nulos, deduplicación de publicaciones y casteo estricto de tipos de datos.
+- **Persistencia Dimensional**: Carga incremental y resolución de claves subrogadas en Azure SQL.

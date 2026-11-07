@@ -356,18 +356,22 @@ def cargar_hechos_youtube(
         return 0
 
     ejecucion = tablas_yt.get("ejecucion")
-    fecha_obs = dt.date.today()
-    if ejecucion is not None and not ejecucion.empty:
-        f_ini = pd.to_datetime(ejecucion["fecha_hora_inicio_utc"].iloc[0], errors="coerce", utc=True)
-        if pd.notna(f_ini):
-            fecha_obs = f_ini.date()
+    mapa_fechas_ejec = {}
+    if ejecucion is not None and not ejecucion.empty and "id_ejecucion" in ejecucion.columns:
+        for _, ej_r in ejecucion.iterrows():
+            ej_id = str(ej_r["id_ejecucion"])
+            f_ini = pd.to_datetime(ej_r.get("fecha_hora_inicio_utc"), errors="coerce", utc=True)
+            if pd.notna(f_ini):
+                mapa_fechas_ejec[ej_id] = f_ini.date()
 
-    id_tiempo = int(fecha_obs.strftime("%Y%m%d"))
-    asegurar_fechas_en_dim_tiempo(engine, {fecha_obs})
+    fechas_a_asegurar = set(mapa_fechas_ejec.values()) if mapa_fechas_ejec else {dt.date.today()}
+    asegurar_fechas_en_dim_tiempo(engine, fechas_a_asegurar)
 
     # Verificar hechos ya insertados para evitar violacion de clave unica
+    ids_ejec_lista = [f"'{x}'" for x in estadisticas["id_ejecucion"].dropna().unique()] if "id_ejecucion" in estadisticas.columns else []
+    filtro_ejec = f"WHERE id_ejecucion IN ({','.join(ids_ejec_lista)})" if ids_ejec_lista else ""
     with engine.connect() as conn:
-        res = conn.execute(text(f"SELECT id_publicacion_sk, id_tiempo, id_ejecucion FROM dbo.HECHOS_METRICAS_PUBLICACION WHERE id_tiempo = {id_tiempo}"))
+        res = conn.execute(text(f"SELECT id_publicacion_sk, id_tiempo, id_ejecucion FROM dbo.HECHOS_METRICAS_PUBLICACION {filtro_ejec}"))
         hechos_existentes = set((r[0], r[1], str(r[2])) for r in res.fetchall())
 
     filas_hechos = []
@@ -386,6 +390,8 @@ def cargar_hechos_youtube(
         if not pub_sk or not cuenta_sk:
             continue
 
+        fecha_obs = mapa_fechas_ejec.get(id_ejec, dt.date.today())
+        id_tiempo = int(fecha_obs.strftime("%Y%m%d"))
         clave_hecho = (pub_sk, id_tiempo, id_ejec)
         if clave_hecho in hechos_existentes:
             continue
@@ -427,14 +433,16 @@ def cargar_hechos_instagram(
 
     metricas = tablas_ig.get("metricas")
     ejecucion = tablas_ig.get("ejecucion")
-    fecha_obs = dt.date.today()
-    if ejecucion is not None and not ejecucion.empty:
-        f_ini = pd.to_datetime(ejecucion["fecha_hora_inicio_utc"].iloc[0], errors="coerce", utc=True)
-        if pd.notna(f_ini):
-            fecha_obs = f_ini.date()
+    mapa_fechas_ejec = {}
+    if ejecucion is not None and not ejecucion.empty and "id_ejecucion" in ejecucion.columns:
+        for _, ej_r in ejecucion.iterrows():
+            ej_id = str(ej_r["id_ejecucion"])
+            f_ini = pd.to_datetime(ej_r.get("fecha_hora_inicio_utc"), errors="coerce", utc=True)
+            if pd.notna(f_ini):
+                mapa_fechas_ejec[ej_id] = f_ini.date()
 
-    id_tiempo = int(fecha_obs.strftime("%Y%m%d"))
-    asegurar_fechas_en_dim_tiempo(engine, {fecha_obs})
+    fechas_a_asegurar = set(mapa_fechas_ejec.values()) if mapa_fechas_ejec else {dt.date.today()}
+    asegurar_fechas_en_dim_tiempo(engine, fechas_a_asegurar)
 
     # Pivotear metricas si existen
     metricas_pivot = {}
@@ -447,8 +455,10 @@ def cargar_hechos_instagram(
                 metricas_pivot[cid] = {}
             metricas_pivot[cid][m_nom] = val
 
+    ids_ejec_lista = [f"'{x}'" for x in contenidos["id_ejecucion"].dropna().unique()] if "id_ejecucion" in contenidos.columns else []
+    filtro_ejec = f"WHERE id_ejecucion IN ({','.join(ids_ejec_lista)})" if ids_ejec_lista else ""
     with engine.connect() as conn:
-        res = conn.execute(text(f"SELECT id_publicacion_sk, id_tiempo, id_ejecucion FROM dbo.HECHOS_METRICAS_PUBLICACION WHERE id_tiempo = {id_tiempo}"))
+        res = conn.execute(text(f"SELECT id_publicacion_sk, id_tiempo, id_ejecucion FROM dbo.HECHOS_METRICAS_PUBLICACION {filtro_ejec}"))
         hechos_existentes = set((r[0], r[1], str(r[2])) for r in res.fetchall())
 
     cuenta_sk = None
@@ -466,6 +476,8 @@ def cargar_hechos_instagram(
         if not pub_sk or not cuenta_sk:
             continue
 
+        fecha_obs = mapa_fechas_ejec.get(id_ejec, dt.date.today())
+        id_tiempo = int(fecha_obs.strftime("%Y%m%d"))
         clave_hecho = (pub_sk, id_tiempo, id_ejec)
         if clave_hecho in hechos_existentes:
             continue
