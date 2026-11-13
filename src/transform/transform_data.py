@@ -82,6 +82,8 @@ SALIDA_POR_DEFECTO = RAIZ / "data" / "processed"
 
 log = logging.getLogger("transform_data")
 
+ULTIMO_RESUMEN = {}
+
 # -------------------------------------------------------------------------
 # Definicion de reglas de transformacion por tabla
 # Cada entrada mapea el nombre de la columna a su tipo destino.
@@ -553,6 +555,8 @@ def main(argumentos=None):
         exportar_resultados(limpias_yt, args.salida, "youtube", args.formatos)
 
     # -- Resumen --
+    ULTIMO_RESUMEN.clear()
+    ULTIMO_RESUMEN.update({k: v for k, v in (("instagram", resumen_ig), ("youtube", resumen_yt)) if v})
     imprimir_resumen(resumen_ig, resumen_yt)
 
     print(f"\nArchivos limpios guardados en: {args.salida}")

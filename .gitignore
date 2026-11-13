@@ -35,3 +35,6 @@ data/processed/
 # Logs de ejecucion batch
 logs/
 *.log
+
+# Dashboard de monitoreo generado
+resultados_monitoreo/

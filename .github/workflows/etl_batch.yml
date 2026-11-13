@@ -73,10 +73,13 @@ jobs:
           Write-Host "Iniciando orquestador main.py con parametros: $params"
           python main.py $params
 
-      - name: Respaldar archivos procesados (CSV / Excel) como artefactos
+      - name: Respaldar archivos procesados (CSV / Excel) y metricas por etapa como artefactos
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: datos-procesados-etl
-          path: data/processed/
-          retention-days: 7
+          path: |
+            data/processed/
+            logs/metricas_pipeline.csv
+          if-no-files-found: warn
+          retention-days: 90

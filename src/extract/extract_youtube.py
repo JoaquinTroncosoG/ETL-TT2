@@ -477,9 +477,12 @@ def main(argv=None):
                 "El canal podria no tener videos publicos.")
 
         # -- Paso 2: Listado de videos --
-        log.info("[2/3] Videos del canal (playlist: %s)", uploads_id)
-        video_ids, respuestas["paginas_playlist"] = extraer_videos_listado(
-            cliente, uploads_id, args.limite)
+        if str(stats.get("videoCount", "")) == "0":
+            log.info("[2/3] El canal no tiene videos publicados; se omite el listado")
+        else:
+            log.info("[2/3] Videos del canal (playlist: %s)", uploads_id)
+            video_ids, respuestas["paginas_playlist"] = extraer_videos_listado(
+                cliente, uploads_id, args.limite)
 
         # -- Paso 3: Estadisticas --
         if args.sin_estadisticas:

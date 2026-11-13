@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estado de los Datos</title>
+<style>
+:root {
+  color-scheme: light;
+  --fondo: #f4f3f0; --superficie: #fcfcfb; --superficie-2: #f0efec; --borde: #e3e2de;
+  --texto: #0b0b0b; --texto-2: #52514e; --texto-3: #7a7974; --grilla: #e9e8e4;
+  --youtube: #ff0000; --instagram: #c13584;
+  --ok: #0ca30c; --ok-texto: #077a07; --ok-fondo: #e8f5e8;
+  --critico: #d03b3b; --critico-texto: #b42828; --critico-fondo: #fbeaea;
+  --advertencia-texto: #8a5d00; --advertencia-fondo: #fdf3dc;
+  --info: #2a78d6; --info-texto: #1f5fae; --info-fondo: #e8f0fb;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --fondo: #121211; --superficie: #1a1a19; --superficie-2: #232321; --borde: #2f2f2c;
+    --texto: #f0efec; --texto-2: #c3c2b7; --texto-3: #8f8e86; --grilla: #2a2a27;
+    --youtube: #ff3b3b; --instagram: #cf4fa6;
+    --ok-texto: #4cc94c; --ok-fondo: #15291a; --critico-texto: #ef7b7b; --critico-fondo: #331a1a;
+    --advertencia-texto: #f5c14d; --advertencia-fondo: #33290f; --info-texto: #7fb2f0; --info-fondo: #172536;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --fondo: #121211; --superficie: #1a1a19; --superficie-2: #232321; --borde: #2f2f2c;
+  --texto: #f0efec; --texto-2: #c3c2b7; --texto-3: #8f8e86; --grilla: #2a2a27;
+  --youtube: #ff3b3b; --instagram: #cf4fa6;
+  --ok-texto: #4cc94c; --ok-fondo: #15291a; --critico-texto: #ef7b7b; --critico-fondo: #331a1a;
+  --advertencia-texto: #f5c14d; --advertencia-fondo: #33290f; --info-texto: #7fb2f0; --info-fondo: #172536;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--fondo); color: var(--texto);
+  font: 15px/1.55 "Segoe UI", system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+main { max-width: 1100px; margin: 0 auto; padding: 28px 16px 56px; }
+h1 { font-size: 24px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
+h2 { font-size: 17px; font-weight: 600; margin: 0; }
+h3 { font-size: 15px; font-weight: 600; margin: 0; }
+.sub { color: var(--texto-2); font-size: 14px; }
+.pequeno { color: var(--texto-3); font-size: 13px; }
+
+.cabecera { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
+.cabecera p { margin: 6px 0 0; color: var(--texto-2); max-width: 640px; }
+.boton-icono { border: 1px solid var(--borde); background: var(--superficie); color: var(--texto-2); border-radius: 8px;
+  height: 36px; padding: 0 12px; cursor: pointer; font: inherit; font-size: 13px; flex-shrink: 0; }
+.boton-icono:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+
+.resumen { background: var(--superficie); border: 1px solid var(--borde); border-radius: 14px; padding: 20px 22px; margin-bottom: 16px;
+  display: grid; grid-template-columns: 56px 1fr; gap: 4px 16px; align-items: center; }
+.resumen .icono-grande { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-size: 26px; font-weight: 700; grid-row: span 2; }
+.resumen.ok .icono-grande { background: var(--ok-fondo); color: var(--ok-texto); }
+.resumen.advertencia .icono-grande { background: var(--advertencia-fondo); color: var(--advertencia-texto); }
+.resumen.critico .icono-grande { background: var(--critico-fondo); color: var(--critico-texto); }
+.resumen .frase { font-size: 21px; font-weight: 650; letter-spacing: -.01em; }
+.resumen .lista { grid-column: 1 / -1; margin-top: 12px; display: grid; gap: 8px; }
+.aviso { display: grid; grid-template-columns: 24px 1fr; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--superficie-2); }
+.aviso .icono { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; }
+.aviso.critico .icono { background: var(--critico-fondo); color: var(--critico-texto); }
+.aviso.advertencia .icono { background: var(--advertencia-fondo); color: var(--advertencia-texto); }
+.aviso.info .icono { background: var(--info-fondo); color: var(--info-texto); }
+.aviso .titulo { font-weight: 600; }
+.aviso .detalle { color: var(--texto-2); font-size: 14px; }
+
+.seccion-titulo { margin: 28px 0 12px; }
+.plataformas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.plataforma { background: var(--superficie); border: 1px solid var(--borde); border-radius: 12px; padding: 16px 18px;
+  display: grid; grid-template-columns: 44px 1fr; gap: 2px 14px; align-items: center; }
+.plataforma .insignia { grid-row: span 3; align-self: start; }
+.plataforma .nombre { font-weight: 650; font-size: 17px; }
+.plataforma .estado { font-weight: 600; font-size: 15px; }
+.plataforma .estado.ok { color: var(--ok-texto); }
+.plataforma .estado.critico { color: var(--critico-texto); }
+.plataforma .estado.advertencia { color: var(--advertencia-texto); }
+
+.insignia { display: inline-grid; place-items: center; border-radius: 12px; color: var(--marca);
+  background: color-mix(in srgb, var(--marca) 12%, transparent); }
+.insignia.grande { width: 44px; height: 44px; }
+.insignia.chica { width: 20px; height: 20px; border-radius: 6px; }
+
+.tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.tarjeta { background: var(--superficie); border: 1px solid var(--borde); border-radius: 12px; padding: 16px 18px; }
+.tarjeta .etiqueta { color: var(--texto-2); font-size: 14px; font-weight: 500; }
+.tarjeta .valor { font-size: 30px; font-weight: 650; letter-spacing: -.02em; margin: 2px 0; font-variant-numeric: tabular-nums; }
+.tarjeta .valor.ok { color: var(--ok-texto); }
+.tarjeta .valor.critico { color: var(--critico-texto); }
+.tarjeta .valor.advertencia { color: var(--advertencia-texto); }
+.tarjeta .explica { color: var(--texto-3); font-size: 13px; }
+
+.graficos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.panel { background: var(--superficie); border: 1px solid var(--borde); border-radius: 12px; padding: 18px; min-width: 0; }
+.panel-cab { margin-bottom: 10px; }
+.panel-cab .sub { margin-top: 2px; font-size: 13px; }
+.leyenda { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--texto-2); margin-top: 8px; }
+.leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.leyenda i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.leyenda b { color: var(--texto); font-weight: 800; }
+.lienzo { position: relative; height: 240px; }
+.vacio { height: 100%; min-height: 120px; display: grid; place-items: center; text-align: center; color: var(--texto-3); font-size: 14px; padding: 16px; }
+footer { color: var(--texto-3); font-size: 12px; margin-top: 28px; text-align: center; }
+
+@media (max-width: 760px) {
+  .graficos { grid-template-columns: minmax(0, 1fr); }
+  .cabecera { flex-direction: column; }
+  .resumen { grid-template-columns: 44px 1fr; padding: 16px; }
+  .resumen .icono-grande { width: 44px; height: 44px; font-size: 20px; }
+  .resumen .frase { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header class="cabecera">
+    <div>
+      <h1>Estado de los datos de redes sociales</h1>
+      <p>Este panel muestra si los datos de YouTube e Instagram se están descargando y guardando correctamente cada día.</p>
+      <div class="pequeno" id="meta" style="margin-top:6px"></div>
+    </div>
+    <button type="button" class="boton-icono" id="tema" aria-label="Cambiar entre tema claro y oscuro">&#9681; Tema</button>
+  </header>
+
+  <section class="resumen" id="resumen" aria-live="polite"></section>
+
+  <h2 class="seccion-titulo">¿Cómo está cada red social?</h2>
+  <section class="plataformas" id="plataformas"></section>
+
+  <h2 class="seccion-titulo">Resumen del periodo</h2>
+  <section class="tarjetas" id="tarjetas"></section>
+
+  <h2 class="seccion-titulo">Historial</h2>
+  <section class="graficos">
+    <article class="panel">
+      <div class="panel-cab">
+        <h3>Actualizaciones por día</h3>
+        <div class="sub">Cuántas veces se actualizaron los datos cada día.</div>
+        <div class="leyenda"><span><i style="background:var(--ok)"></i>Salió bien</span><span><i style="background:var(--critico)"></i>Tuvo un problema</span></div>
+      </div>
+      <div class="lienzo"><canvas id="g-diario" aria-label="Actualizaciones por día"></canvas></div>
+    </article>
+    <article class="panel">
+      <div class="panel-cab">
+        <h3>Tiempo de actualización</h3>
+        <div class="sub">Segundos que tardó cada descarga. Mientras más bajo, mejor.</div>
+        <div class="leyenda"><span data-leyenda="youtube"></span><span data-leyenda="instagram"></span><span><b>&#10006;</b>Falló</span></div>
+      </div>
+      <div class="lienzo"><canvas id="g-latencia" aria-label="Tiempo de actualización"></canvas></div>
+    </article>
+  </section>
+  <footer>Pipeline ETL Multi-Plataforma &middot; Monitoreo de datos</footer>
+</main>
+
+<script id="datos" type="application/json">__DATOS__</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+(function () {
+  const D = JSON.parse(document.getElementById("datos").textContent);
+  const NOMBRES = { youtube: "YouTube", instagram: "Instagram" };
+  const graficos = {};
+  const hayChart = typeof window.Chart !== "undefined";
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (t) => String(t == null ? "" : t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const seg = (v) => v == null ? "–" : (v < 10 ? v.toFixed(1).replace(".", ",") : Math.round(v)) + " s";
+  const entero = (v) => v == null ? "–" : Math.round(v).toLocaleString("es-CL");
+  const formato = new Intl.DateTimeFormat("es-CL", { timeZone: D.zona, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const partes = (ts) => Object.fromEntries(formato.formatToParts(ts).map((p) => [p.type, p.value]));
+  const fechaCorta = (ts) => { const p = partes(ts); return `${p.day}-${p.month}`; };
+  const fechaLarga = (ts) => { const p = partes(ts); return `${p.day}-${p.month}-${p.year} ${p.hour}:${p.minute}`; };
+  const hace = (h) => h < 1 ? "hace menos de 1 hora" : h < 48 ? `hace ${Math.round(h)} horas` : `hace ${Math.round(h / 24)} días`;
+
+  const GLIFOS = {
+    youtube: '<rect x="2.5" y="5.5" width="19" height="13" rx="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10.2 9.3v5.4l4.6-2.7z" fill="currentColor"/>',
+    instagram: '<rect x="3.5" y="3.5" width="17" height="17" rx="5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.8" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17" cy="7" r="1.1" fill="currentColor"/>',
+  };
+  const insignia = (p, tam) => {
+    const px = tam === "grande" ? 24 : 14;
+    return `<span class="insignia ${tam}" style="--marca:var(--${p})" aria-hidden="true"><svg width="${px}" height="${px}" viewBox="0 0 24 24">${GLIFOS[p]}</svg></span>`;
+  };
+  document.querySelectorAll("[data-leyenda]").forEach((n) => {
+    n.innerHTML = `${insignia(n.dataset.leyenda, "chica")}${NOMBRES[n.dataset.leyenda]}`;
+  });
+
+  function vacio(id, html) {
+    const cont = $(id).parentElement;
+    cont.querySelectorAll(".vacio").forEach((n) => n.remove());
+    $(id).style.display = html ? "none" : "";
+    if (html) {
+      if (graficos[id]) { graficos[id].destroy(); delete graficos[id]; }
+      cont.insertAdjacentHTML("beforeend", `<div class="vacio"><div>${html}</div></div>`);
+    }
+    return !!html;
+  }
+
+  function renderResumen() {
+    $("meta").textContent = `Actualizado el ${D.generado} · Últimos ${D.dias} días`;
+    const a = D.alertas;
+    const criticas = a.filter((x) => x.nivel === "critico").length;
+    const avisos = a.filter((x) => x.nivel === "advertencia").length;
+    let tono = "ok", icono = "&#10004;", frase = "Todo funciona correctamente", sub = "Los datos se están actualizando sin problemas.";
+    if (criticas) {
+      tono = "critico"; icono = "!";
+      frase = criticas === 1 ? "Hay 1 problema que requiere atención" : `Hay ${criticas} problemas que requieren atención`;
+      sub = "Revisa el detalle a continuación.";
+    } else if (avisos) {
+      tono = "advertencia"; icono = "!";
+      frase = avisos === 1 ? "Todo funciona, con 1 aviso" : `Todo funciona, con ${avisos} avisos`;
+      sub = "No es urgente, pero conviene revisarlo.";
+    } else if (a.length) {
+      sub = "Hay una recomendación pendiente.";
+    }
+    const iconos = { critico: "!", advertencia: "!", info: "i" };
+    $("resumen").className = "resumen " + tono;
+    $("resumen").innerHTML = `<div class="icono-grande" aria-hidden="true">${icono}</div><div class="frase">${frase}</div><div class="sub">${sub}</div>` +
+      (a.length ? `<div class="lista">${a.map((x) => `<div class="aviso ${x.nivel}"><span class="icono" aria-hidden="true">${iconos[x.nivel]}</span>
+        <div><div class="titulo">${esc(x.titulo)}</div><div class="detalle">${esc(x.detalle)}</div></div></div>`).join("")}</div>` : "");
+  }
+
+  function renderPlataformas() {
+    $("plataformas").innerHTML = ["youtube", "instagram"].map((p) => {
+      const i = D.plataformas[p];
+      let tono, texto;
+      if (!i) { tono = "advertencia"; texto = "! Sin datos recientes"; }
+      else if (i.atrasada) { tono = "advertencia"; texto = `! Sin actualizar ${hace(i.horas)}`; }
+      else if (i.ultimo_estado === "EXITO") { tono = "ok"; texto = `&#10004; Actualizado ${hace(i.horas)}`; }
+      else { tono = "critico"; texto = "&#10006; La última actualización falló"; }
+      const detalle = i ? `Última actualización: ${esc(i.ultima_fecha)} · ${entero(i.ultimos_contenidos)} publicaciones revisadas` : "No hay registros en el periodo.";
+      return `<div class="plataforma">${insignia(p, "grande")}<div class="nombre">${NOMBRES[p]}</div>
+        <div class="estado ${tono}">${texto}</div><div class="pequeno">${detalle}</div></div>`;
+    }).join("");
+  }
+
+  function renderTarjetas() {
+    const k = D.indicadores;
+    const i = D.integridad;
+    const aprob = i ? i.pruebas.filter((p) => p.ok).length : 0;
+    const tonoExito = !k.total ? "" : k.tasa_exito >= 90 ? "ok" : k.tasa_exito >= 50 ? "advertencia" : "critico";
+    const t = [
+      { e: "Actualizaciones exitosas", v: k.total ? `${Math.round(k.tasa_exito)}%` : "–", c: tonoExito,
+        x: k.total ? `${k.exitos} de ${k.total} actualizaciones salieron bien.` : "Aún no hay actualizaciones." },
+      { e: "Problemas pendientes", v: k.pendientes, c: k.pendientes ? "critico" : "ok",
+        x: k.pendientes ? "Problemas que aún no se resuelven." : k.fallos ? "Todos los problemas anteriores ya se resolvieron." : "No hubo problemas en el periodo." },
+      { e: "Tiempo de actualización", v: seg(k.latencia_prom), c: "",
+        x: "Lo que tarda, en promedio, descargar los datos de cada red." },
+      { e: "Datos verificados", v: i ? `${aprob} de ${i.pruebas.length}` : "Pendiente", c: i ? (aprob === i.pruebas.length ? "ok" : "critico") : "",
+        x: i ? `Revisiones aprobadas el ${esc(i.fecha)}.` : "Aún no se compara lo descargado con lo guardado." },
+    ];
+    $("tarjetas").innerHTML = t.map((x) => `<div class="tarjeta"><div class="etiqueta">${x.e}</div>
+      <div class="valor ${x.c}">${x.v}</div><div class="explica">${x.x}</div></div>`).join("");
+  }
+
+  function opciones() {
+    return {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+      plugins: { legend: { display: false },
+        tooltip: { backgroundColor: css("--superficie"), titleColor: css("--texto"), bodyColor: css("--texto-2"),
+          borderColor: css("--borde"), borderWidth: 1, padding: 10, cornerRadius: 8, boxPadding: 4, usePointStyle: true } },
+      scales: {
+        x: { grid: { display: false }, border: { color: css("--borde") }, ticks: { color: css("--texto-3"), maxRotation: 0, autoSkipPadding: 14 } },
+        y: { beginAtZero: true, grid: { color: css("--grilla") }, border: { display: false }, ticks: { color: css("--texto-3"), precision: 0 } },
+      },
+    };
+  }
+
+  function crear(id, config) {
+    if (graficos[id]) graficos[id].destroy();
+    graficos[id] = new Chart($(id), config);
+  }
+
+  function graficoDiario() {
+    const filas = D.ejecuciones;
+    if (vacio("g-diario", !D.rango_dias.length || !filas.length ? "Aún no hay actualizaciones en el periodo" : "")) return;
+    const ok = {}, falla = {};
+    filas.forEach((e) => { const t = e.estado === "EXITO" ? ok : falla; t[e.dia] = (t[e.dia] || 0) + 1; });
+    const o = opciones();
+    o.scales.x.stacked = true; o.scales.y.stacked = true;
+    o.interaction = { mode: "index", intersect: false };
+    o.plugins.tooltip.callbacks = { title: (it) => "Día " + it[0].label };
+    crear("g-diario", { type: "bar", options: o, data: {
+      labels: D.rango_dias.map((d) => d.etiqueta),
+      datasets: [
+        { label: "Salió bien", data: D.rango_dias.map((d) => ok[d.iso] || 0), backgroundColor: css("--ok"), borderRadius: 4,
+          borderSkipped: "start", maxBarThickness: 28, borderColor: css("--superficie"), borderWidth: { top: 2 } },
+        { label: "Tuvo un problema", data: D.rango_dias.map((d) => falla[d.iso] || 0), backgroundColor: css("--critico"), borderRadius: 4,
+          borderSkipped: "start", maxBarThickness: 28 },
+      ] } });
+  }
+
+  function graficoLatencia() {
+    const filas = D.ejecuciones.filter((e) => e.duracion != null);
+    if (vacio("g-latencia", filas.length ? "" : "Aún no hay datos")) return;
+    const falla = (c) => c.raw && c.raw.e.estado !== "EXITO";
+    const datasets = ["youtube", "instagram"].map((p) => {
+      const color = css("--" + p);
+      return { label: NOMBRES[p], data: filas.filter((e) => e.plataforma === p).map((e) => ({ x: e.ts, y: e.duracion, e })),
+        borderColor: color, backgroundColor: color, borderWidth: 2, tension: 0, pointHoverRadius: 8,
+        pointStyle: (c) => falla(c) ? "crossRot" : "circle", pointRadius: (c) => falla(c) ? 7 : 4,
+        pointBorderColor: (c) => falla(c) ? css("--texto") : color, pointBorderWidth: (c) => falla(c) ? 3 : 2, pointBackgroundColor: color };
+    });
+    const o = opciones();
+    o.scales.x = Object.assign(o.scales.x, { type: "linear", ticks: { color: css("--texto-3"), maxTicksLimit: 6, callback: (v) => fechaCorta(v) } });
+    o.scales.y.ticks = { color: css("--texto-3"), callback: (v) => v + " s" };
+    o.interaction = { mode: "nearest", intersect: false };
+    o.plugins.tooltip.callbacks = {
+      title: (it) => fechaLarga(it[0].raw.x),
+      label: (it) => `${it.dataset.label}: ${seg(it.raw.y)}`,
+      afterLabel: (it) => it.raw.e.estado === "EXITO" ? "Salió bien" : "✖ Tuvo un problema",
+    };
+    crear("g-latencia", { type: "line", data: { datasets }, options: o });
+  }
+
+  function renderGraficos() {
+    if (!hayChart) {
+      ["g-diario", "g-latencia"].forEach((id) => vacio(id, "No se pudieron cargar los gráficos (requiere conexión a internet)."));
+      return;
+    }
+    Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+    Chart.defaults.font.size = 12;
+    graficoDiario(); graficoLatencia();
+  }
+
+  try { const t = localStorage.getItem("tema-dashboard-etl"); if (t) document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+  $("tema").addEventListener("click", () => {
+    const raiz = document.documentElement;
+    const oscuro = raiz.getAttribute("data-theme") === "dark" || (!raiz.getAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
+    const nuevo = oscuro ? "light" : "dark";
+    raiz.setAttribute("data-theme", nuevo);
+    try { localStorage.setItem("tema-dashboard-etl", nuevo); } catch (e) {}
+    renderGraficos();
+  });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderGraficos);
+
+  renderResumen(); renderPlataformas(); renderTarjetas(); renderGraficos();
+})();
+</script>
+</body>
+</html>

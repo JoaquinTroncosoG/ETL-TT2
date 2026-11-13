@@ -69,7 +69,6 @@ TAMANO_PAGINA = 50
 
 METRICAS_BASE = ["reach", "saved"]
 METRICAS_IMAGEN_VIDEO = ["likes", "comments", "shares"]
-METRICAS_REELS = ["ig_reels_aggregated_all_plays_count"]
 
 # Codigos de Meta que indican cuota agotada. 80002 es el limite propio de
 # la cuenta de Instagram (Business Use Case), equivalente a los anteriores.
@@ -375,8 +374,6 @@ def metricas_para(media):
     metricas = list(METRICAS_BASE)
     if media.get("media_type") in ("IMAGE", "VIDEO"):
         metricas += METRICAS_IMAGEN_VIDEO
-    if media.get("media_product_type") == "REELS":
-        metricas += METRICAS_REELS
     return metricas
 
 

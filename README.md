@@ -125,6 +125,19 @@ Antes de correr el pipeline, puedes verificar el estado de tus conexiones con lo
   ```bash
   python tools/canjear_instagram.py <TOKEN_CORTO_AQUI>
   ```
+* **Dashboard de monitoreo e integridad:**
+  ```bash
+  python tools/dashboard_monitoreo.py --abrir      # ejecuciones diarias de GitHub Actions (requiere GITHUB_TOKEN)
+  python tools/dashboard_monitoreo.py --local      # solo ejecuciones hechas en este equipo
+  python tools/dashboard_monitoreo.py --azure      # ejecuciones desde DIM_EJECUCION (una consulta)
+  python tools/dashboard_monitoreo.py --integridad # auditoria contra Azure, se guarda para reutilizarla
+  ```
+  Con `GITHUB_TOKEN` en el `.env` (token de solo lectura), descarga los artefactos de la ejecución diaria y los acumula en `resultados_monitoreo/historial_github/`, ya que GitHub los elimina al expirar.
+  Genera `resultados_monitoreo/dashboard.html` (plantilla en `tools/plantilla_dashboard.html`), pensado para público no técnico:
+  - **Resumen tipo semáforo** con avisos en lenguaje simple (fallos sin resolver, redes sin actualizar, permiso de Instagram por vencer, base de datos sin verificar).
+  - **Estado de cada red social**, 4 indicadores clave y 2 gráficos: actualizaciones por día y tiempo de actualización.
+
+  `main.py` registra los tiempos de cada etapa y los registros válidos en `logs/metricas_pipeline.csv`. Los gráficos usan Chart.js desde CDN; sin internet siguen disponibles los avisos y los indicadores.
 
 ---
 

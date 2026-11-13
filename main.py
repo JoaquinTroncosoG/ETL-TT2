@@ -14,9 +14,11 @@ USO:
 """
 
 import argparse
+import csv
 import datetime as dt
 import sys
 import time
+from pathlib import Path
 
 # Importar modulos de cada fase
 from src.extract import extract_youtube
@@ -109,6 +111,33 @@ def ejecutar_carga(args) -> bool:
         return False
 
 
+ARCHIVO_METRICAS = Path(__file__).resolve().parent / "logs" / "metricas_pipeline.csv"
+COLUMNAS_METRICAS = [
+    "fecha_inicio_utc", "plataforma", "seg_extraccion", "seg_transformacion", "seg_carga", "seg_total",
+    "estado_extraccion", "estado_transformacion", "estado_carga", "registros_originales", "registros_validos",
+]
+
+
+def registrar_metricas(metricas: dict):
+    """Agrega una fila al historial de tiempos por etapa. Nunca interrumpe el pipeline."""
+    try:
+        resumen_t = transform_data.ULTIMO_RESUMEN if "seg_transformacion" in metricas else {}
+        tablas = [t for plataforma in resumen_t.values() for t in plataforma.values()]
+        if tablas:
+            metricas["registros_originales"] = sum(t["filas_originales"] for t in tablas)
+            metricas["registros_validos"] = sum(t["filas_finales"] for t in tablas)
+
+        ARCHIVO_METRICAS.parent.mkdir(parents=True, exist_ok=True)
+        nuevo = not ARCHIVO_METRICAS.exists()
+        with open(ARCHIVO_METRICAS, "a", newline="", encoding="utf-8") as f:
+            escritor = csv.DictWriter(f, fieldnames=COLUMNAS_METRICAS, extrasaction="ignore")
+            if nuevo:
+                escritor.writeheader()
+            escritor.writerow(metricas)
+    except Exception as e:
+        print(f"[AVISO] No se pudieron registrar las metricas de la ejecucion: {e}")
+
+
 def main():
     args = parsear_argumentos()
     inicio = time.time()
@@ -121,22 +150,35 @@ def main():
     ejecutar_todas = not (args.solo_extraer or args.solo_transformar or args.solo_cargar)
 
     resumen = {}
+    metricas = {"fecha_inicio_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+                "plataforma": args.plataforma or "todas"}
 
     # 1. Extraccion
     if ejecutar_todas or args.solo_extraer:
+        t0 = time.time()
         resumen["Extraccion"] = ejecutar_extraccion(args)
+        metricas["seg_extraccion"] = round(time.time() - t0, 3)
+        metricas["estado_extraccion"] = "EXITO" if all(resumen["Extraccion"].values()) else "FALLIDA"
 
     # 2. Transformacion
     if ejecutar_todas or args.solo_transformar:
+        t0 = time.time()
         exito_t = ejecutar_transformacion(args)
+        metricas["seg_transformacion"] = round(time.time() - t0, 3)
+        metricas["estado_transformacion"] = "EXITO" if exito_t else "FALLIDA"
         resumen["Transformacion"] = "[OK]" if exito_t else "[FALLA]"
 
     # 3. Carga
     if ejecutar_todas or args.solo_cargar:
+        t0 = time.time()
         exito_l = ejecutar_carga(args)
+        metricas["seg_carga"] = round(time.time() - t0, 3)
+        metricas["estado_carga"] = "EXITO" if exito_l else "FALLIDA"
         resumen["Carga Azure"] = "[OK]" if exito_l else "[FALLA]"
 
     duracion = time.time() - inicio
+    metricas["seg_total"] = round(duracion, 3)
+    registrar_metricas(metricas)
 
     # Resumen final
     print("\n" + "=" * 65)
